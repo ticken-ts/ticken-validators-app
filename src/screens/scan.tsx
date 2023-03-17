@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BarCodeScanner } from 'expo-barcode-scanner';
-import { IQRPayload } from '../types/IQRPayload';
+import { IQRPayload } from '../models/IQRPayload';
 import { Text, StyleSheet, Button, View } from 'react-native';
 
 export const Scan: React.FunctionComponent = () => {
