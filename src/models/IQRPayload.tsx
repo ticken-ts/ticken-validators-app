@@ -1,3 +1,6 @@
 export interface IQRPayload {
-  url: string;
+  ticketID: string;
+  eventID: string;
+  r: string;
+  s: string;
 }

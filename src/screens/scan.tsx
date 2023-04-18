@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BarCodeScanner } from 'expo-barcode-scanner';
 import { IQRPayload } from '../models/IQRPayload';
 import { Text, StyleSheet, Button, View } from 'react-native';
+import axios from 'axios';
 
 export const Scan: React.FunctionComponent = () => {
   const [loading, setLoading] = useState(true);
@@ -11,6 +12,22 @@ export const Scan: React.FunctionComponent = () => {
   useEffect(() => {
     requestCameraPermission();
   }, []);
+
+  const scanTicket = (ticketData: IQRPayload) => {
+    const validatorURL = 'http://192.168.0.102:7000/api/v';
+
+    axios
+      .post(
+        `${validatorURL}/events/${ticketData.eventID}/tickets/${ticketData.ticketID}/scan`,
+        { r: ticketData.r, s: ticketData.s }
+      )
+      .then((res) => {
+        console.log('RES: ', res);
+      })
+      .catch((ex) => {
+        console.log('ERR: ', ex);
+      });
+  };
 
   const requestCameraPermission = async () => {
     try {
@@ -39,7 +56,7 @@ export const Scan: React.FunctionComponent = () => {
       <View
         style={{ flex: 1, alignContent: 'center', justifyContent: 'center' }}
       >
-        <Text style={styles.text}>Name: {scanData.url}</Text>
+        <Text style={styles.text}>Name: {}</Text>
         <Button title="Scan again" onPress={() => setScanData(undefined)} />
       </View>
     );
@@ -51,9 +68,8 @@ export const Scan: React.FunctionComponent = () => {
         style={[styles.container]}
         onBarCodeScanned={({ type, data }) => {
           try {
-            console.log(type);
-            console.log(data);
-            setScanData({ url: data });
+            const jsonTicketData: IQRPayload = JSON.parse(data);
+            scanTicket(jsonTicketData);
           } catch (error) {
             console.error('Unable to parse string: ', error);
           }
