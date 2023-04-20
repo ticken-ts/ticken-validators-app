@@ -3,25 +3,28 @@ import { BarCodeScanner } from 'expo-barcode-scanner';
 import { IQRPayload } from '../models/IQRPayload';
 import { Text, StyleSheet, Button, View, ActivityIndicator } from 'react-native';
 import axios from 'axios';
+import ScanResult from '../components/ScanResult';
+import Scanner from '../components/Scanner';
+import { useCameraPermissions } from '../hooks/useCameraPermissions';
+import { colors } from '../colors';
 
 export const Scan: React.FunctionComponent = () => {
-  const [loading, setLoading] = useState<boolean>(true);
   const [scanData, setScanData] = useState<IQRPayload>();
-  const [permission, setPermission] = useState(true);
   const [success, setSuccess] = useState<boolean>();
+  const [loading, setLoading] = useState<boolean>(false);
 
-  useEffect(() => {
-    requestCameraPermission();
-  }, []);
+  const {loading: loadingPermissions, permission} = useCameraPermissions()
 
   const scanAgain = () => {
     setScanData(undefined);
     setSuccess(undefined);
   }
 
-  const scanTicket = (ticketData: IQRPayload) => {
+  const onScan = (ticketData: IQRPayload) => {
+    setScanData(ticketData);
     const validatorURL = 'http://192.168.0.102:7000/api/v';
     console.log("Calling service")
+    setLoading(true);
     axios
       .post(
         `${validatorURL}/events/${ticketData.eventID}/tickets/${ticketData.ticketID}/scan`,
@@ -34,56 +37,28 @@ export const Scan: React.FunctionComponent = () => {
       .catch((ex) => {
         setSuccess(false);
         console.log('ERR: ', ex);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 
-  const requestCameraPermission = async () => {
-    try {
-      const { status, granted } =
-        await BarCodeScanner.requestPermissionsAsync();
-      console.log(`Status: ${status}, Granted: ${granted}`);
-
-      if (status === 'granted') {
-        console.log('Access granted');
-        setPermission(true);
-      } else {
-        setPermission(false);
-      }
-    } catch (error) {
-      console.error(error);
-      setPermission(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) return <Text>Requesting permission ...</Text>;
+  if (loadingPermissions || loading) return (
+    <View style={styles.loadingContainer}> 
+      <ActivityIndicator size="large" color={colors.primary} />
+    </View>
+  );
   
   if (scanData) return (
-    <View style={styles.container}>
-      {success === true && <Text>Ticket validated successfully</Text>}
-      {success === false && <Text>There was an error validating the ticket</Text>}
-      <View style={{paddingTop: 20}} ></View>
-      <Button title={'Tap to Scan Again'} onPress={scanAgain} />
-    </View>
+    <ScanResult success={success} scanAgain={scanAgain} />
   )
 
   if (permission) {
     return (
-      <BarCodeScanner
-        style={[styles.container]}
-        onBarCodeScanned={({ type, data }) => {
-          if (scanData) return;
-          setScanData(JSON.parse(data));
-          try {
-            const jsonTicketData: IQRPayload = JSON.parse(data);
-            scanTicket(jsonTicketData);
-          } catch (error) {
-            console.error('Unable to parse string: ', error);
-          }
-        }}
-      >
-      </BarCodeScanner>
+      <Scanner
+        enabled={!scanData}
+        onScan={onScan}
+      />
     );
   } else {
     return <Text style={styles.textError}>Permission rejected.</Text>;
@@ -97,11 +72,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+  scanner: {
+    flex: 1,
+  },
   text: {
     marginTop: 15,
     backgroundColor: 'white'
   },
   textError: {
     color: 'red'
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
   }
 });
