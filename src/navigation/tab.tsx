@@ -11,7 +11,13 @@ const iconSize = 30;
 
 export const ValidatorAppTabs = () => {
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false, tabBarActiveTintColor: colors.primary }}>
+    <Tab.Navigator 
+      screenOptions={{ 
+        headerShown: false, 
+        tabBarActiveTintColor: colors.white, 
+        tabBarInactiveTintColor: colors.tertiary,
+        tabBarStyle: { height: 60, paddingBottom: 10, backgroundColor: colors.primary },
+      }}>
       <Tab.Screen
         name="Home"
         component={Home}
@@ -34,20 +40,6 @@ export const ValidatorAppTabs = () => {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons
               name="qrcode-scan"
-              size={size}
-              color={color}
-            />
-          )
-        }}
-      />
-      <Tab.Screen
-        name="Info"
-        component={Info}
-        options={{
-          tabBarLabel: 'Info',
-          tabBarIcon: ({color, size}) => (
-            <MaterialCommunityIcons
-              name="information"
               size={size}
               color={color}
             />
