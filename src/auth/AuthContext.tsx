@@ -2,6 +2,7 @@ import React, {createContext, useEffect, useReducer, useState} from 'react';
 import {
   DiscoveryDocument, exchangeCodeAsync,
   makeRedirectUri, refreshAsync,
+  ResponseType,
   revokeAsync, TokenResponse,
   useAuthRequest,
   useAutoDiscovery,
@@ -13,6 +14,7 @@ import {env} from '../config/loadEnvironment';
 import {selectCredentials} from '../store/selectors/openID';
 import {setCredentials, wipe} from '../store/reducers/openID';
 import {DateTime} from 'luxon';
+import {Platform} from 'react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -47,13 +49,14 @@ const redirectUri = makeRedirectUri({
 export const AuthContextProvider = ({children}: any) => {
   const dispatch = useAppDispatch();
   const {token, refreshToken, idToken, expiresAt} = useSelector(selectCredentials);
-
+  
   const discovery = useAutoDiscovery(`${env.KEYCLOAK_URL}/realms/validators`)
 
   const [request, result, promptAsync] = useAuthRequest({
     clientId: env.KEYCLOAK_CLIENT_ID,
     usePKCE: false,
     redirectUri,
+    clientSecret: env.KEYCLOAK_CLIENT_SECRET,
     scopes: ['openid', 'profile', 'email', 'offline_access'],
   }, discovery);
 
@@ -94,6 +97,7 @@ export const AuthContextProvider = ({children}: any) => {
               refreshToken,
               clientId: env.KEYCLOAK_CLIENT_ID,
               scopes: ['openid', 'profile', 'email', 'offline_access'],
+              clientSecret: env.KEYCLOAK_CLIENT_SECRET,
             },
             discovery
           );
@@ -132,6 +136,7 @@ export const AuthContextProvider = ({children}: any) => {
         code: result.params['code'],
         redirectUri,
         clientId: env.KEYCLOAK_CLIENT_ID,
+        clientSecret: env.KEYCLOAK_CLIENT_SECRET,
         scopes: ['openid', 'profile', 'email', 'offline_access'],
       }, discovery).then(res => {
         console.log("Exchanged code:", res)
@@ -171,7 +176,7 @@ export const AuthContextProvider = ({children}: any) => {
           logout,
           ready: !!request,
           token,
-          isLoggedIn: !!token,
+          isLoggedIn: token != null && token.length > 0,
         }
       }>
       {children}

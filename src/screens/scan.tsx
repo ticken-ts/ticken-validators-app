@@ -7,6 +7,7 @@ import ScanResult from '../components/ScanResult';
 import Scanner from '../components/Scanner';
 import { useCameraPermissions } from '../hooks/useCameraPermissions';
 import { colors } from '../colors';
+import { env } from '../config/loadEnvironment';
 
 export const Scan: React.FunctionComponent = () => {
   const [scanData, setScanData] = useState<IQRPayload>();
@@ -22,7 +23,7 @@ export const Scan: React.FunctionComponent = () => {
 
   const onScan = (ticketData: IQRPayload) => {
     setScanData(ticketData);
-    const validatorURL = 'http://192.168.0.102:7000/api/v';
+    const validatorURL = env.VALIDATION_URL;
     console.log("Calling service")
     setLoading(true);
     axios
