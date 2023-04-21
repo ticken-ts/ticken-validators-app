@@ -1,6 +1,6 @@
 import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 
-type Credentials = {
+export type Credentials = {
   token: string;
   refreshToken: string;
   idToken: string;

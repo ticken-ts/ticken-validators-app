@@ -1,6 +1,7 @@
 import React, {createContext, useEffect, useReducer, useState} from 'react';
 import {
   DiscoveryDocument, exchangeCodeAsync,
+  fetchUserInfoAsync,
   makeRedirectUri, refreshAsync,
   ResponseType,
   revokeAsync, TokenResponse,
@@ -12,7 +13,7 @@ import {useSelector} from 'react-redux';
 import useAppDispatch from '../hooks/useDispatch';
 import {env} from '../config/loadEnvironment';
 import {selectCredentials} from '../store/selectors/openID';
-import {setCredentials, wipe} from '../store/reducers/openID';
+import {Credentials, setCredentials, wipe} from '../store/reducers/openID';
 import {DateTime} from 'luxon';
 import {Platform} from 'react-native';
 
@@ -26,6 +27,7 @@ type AuthContextProps = {
   ready: boolean;
   token: string | null;
   isLoggedIn: boolean;
+  userData: UserData | undefined;
 };
 
 // Internal State type
@@ -40,6 +42,16 @@ const initialState: InternalState = {
   refreshToken: null,
 };
 
+// User data
+interface UserData {
+  email: string;
+  email_verified: boolean;
+  family_name: string;
+  given_name: string;
+  preferred_username: string;
+  sub: string;
+}
+
 export const AuthContext = createContext({} as AuthContextProps);
 
 const redirectUri = makeRedirectUri({
@@ -49,6 +61,7 @@ const redirectUri = makeRedirectUri({
 export const AuthContextProvider = ({children}: any) => {
   const dispatch = useAppDispatch();
   const {token, refreshToken, idToken, expiresAt} = useSelector(selectCredentials);
+  const [userData, setUserData] = useState<UserData>();
   
   const discovery = useAutoDiscovery(`${env.KEYCLOAK_URL}/realms/validators`)
 
@@ -59,6 +72,17 @@ export const AuthContextProvider = ({children}: any) => {
     clientSecret: env.KEYCLOAK_CLIENT_SECRET,
     scopes: ['openid', 'profile', 'email', 'offline_access'],
   }, discovery);
+
+  const onCredentialsChange = async (credentials: Credentials) => {
+    dispatch(setCredentials(credentials));
+    if (!discovery) return;
+    fetchUserInfoAsync({accessToken: credentials.token}, discovery).then(res => {
+      console.log("Got user info:", res)
+      setUserData(res as any)
+    }).catch(err => {
+      console.log("Error getting user info:", err)
+    })
+  };
 
   const login = () => {
     if (request) {
@@ -103,12 +127,12 @@ export const AuthContextProvider = ({children}: any) => {
           );
           if (res.accessToken && res.refreshToken && res.idToken) {
             console.log("Got new token:", res);
-            dispatch(setCredentials({
+            onCredentialsChange({
               token: res.accessToken,
               refreshToken: res.refreshToken,
               idToken: res.idToken,
               expiresAt: res.issuedAt + (res.expiresIn || 300),
-            }))
+            })
           }
         } catch (e) {
           console.log("Error refreshing token:", (e as Error).message)
@@ -141,12 +165,12 @@ export const AuthContextProvider = ({children}: any) => {
       }, discovery).then(res => {
         console.log("Exchanged code:", res)
         if (res.accessToken && res.refreshToken && res.idToken && res.issuedAt && res.expiresIn) {
-          dispatch(setCredentials({
+          onCredentialsChange({
             token: res.accessToken,
             refreshToken: res.refreshToken,
             idToken: res.idToken,
             expiresAt: res.issuedAt + (res.expiresIn || 300),
-          }));
+          });
         } else {
           console.log("Error exchanging code: access token or refresh token not returned");
         }
@@ -155,12 +179,12 @@ export const AuthContextProvider = ({children}: any) => {
       })
     }
     if (result?.type === 'success' && result.authentication?.accessToken && result.authentication?.refreshToken && result.authentication?.idToken && result.authentication?.issuedAt && result.authentication?.expiresIn) {
-      dispatch(setCredentials({
+      onCredentialsChange({
         token: result.authentication?.accessToken,
         refreshToken: result.authentication?.refreshToken,
         idToken: result.authentication?.idToken,
         expiresAt: result.authentication?.issuedAt + (result.authentication?.expiresIn || 300),
-      }));
+      });
     }
   }, [result]);
 
@@ -177,6 +201,7 @@ export const AuthContextProvider = ({children}: any) => {
           ready: !!request,
           token,
           isLoggedIn: token != null && token.length > 0,
+          userData,
         }
       }>
       {children}
